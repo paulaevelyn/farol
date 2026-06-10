@@ -21,6 +21,12 @@ const HEADERS = [
   'participantId',
   'syncedAt',
   'consentDate',
+  // Dados demográficos
+  'demo_gender',
+  'demo_age',
+  'demo_city',
+  'demo_country',
+  'demo_therapy',
   // GAD-7 Pré-teste
   'pretestDate',
   'gad7Pre_score',
@@ -111,6 +117,12 @@ function doPost(e) {
       data.participantId || '',
       new Date().toISOString(),
       data.consentDate || '',
+      // Dados demográficos
+      (data.demographics?.gender  || ''),
+      (data.demographics?.age     || ''),
+      (data.demographics?.city    || ''),
+      (data.demographics?.country || ''),
+      (data.demographics?.therapy || ''),
       // GAD-7 pre
       pre.date || '',
       gPre.score != null ? gPre.score : '',

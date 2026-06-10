@@ -3,12 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#5E7D73">
+
+<!-- PWA / Atalho na home screen -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/farol-icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#3D5A52">
+<meta name="application-name" content="Farol">
+
+<!-- iOS (Safari não lê o manifest) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Farol">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
 <title>Farol — Navegando as Preocupações</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <div class="splash-inner">
+    <img src="assets/farol-logo.svg" alt="Farol" class="splash-logo">
+    <div class="splash-dots">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
 <!-- ONBOARDING — 8 slides -->
@@ -18,7 +40,7 @@
   <div class="ob-slide on" id="obs0">
     <div class="ob-top">
       <div class="ob-brand">
-        <img src="logo-completa.png" alt="Psicoterapia e Afins">
+        <img src="assets/farol-logo.svg" alt="Farol" width="180">
       </div>
       <div class="ob-icon">🌊</div>
       <div class="ob-title">Você chegou aqui.<br>Isso já diz muito.</div>
@@ -27,7 +49,7 @@
         "A preocupação não é fraqueza. É biologia. E biologia pode ser retrainada."
       </div>
     </div>
-    <div class="ob-dots"><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(1)">Continuar</button>
     <button class="btn ghost" onclick="obSkip()" style="margin-top:0">Já conheço o app</button>
   </div>
@@ -35,7 +57,7 @@
   <!-- 1: O Farol (metáfora storytelling) -->
   <div class="ob-slide" id="obs1">
     <div class="ob-top">
-      <div class="ob-icon">🏮</div>
+      <div class="ob-icon"><img src="assets/farol-icon.svg" alt="" width="64"></div>
       <div class="ob-title">Deixa eu te contar sobre um farol.</div>
       <div class="ob-body">Um farol não acalma o mar. Ele não impede que as ondas batam nas rochas nem que o vento uive na noite.<br><br>Mas ele faz algo muito mais poderoso: <em>ele ilumina</em>. Mostra onde estão os perigos, aponta o rumo seguro, e lembra ao navegador que há terra firme — mesmo quando tudo parece escuridão.</div>
       <div class="ob-quote">
@@ -43,7 +65,7 @@
       </div>
       <div class="ob-body">Este app é o seu Farol. Não prometemos céu limpo. Prometemos que você vai aprender a <strong>navegar com mais segurança</strong>, mesmo nas noites mais difíceis.</div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(2)">Faz sentido ⛵</button>
   </div>
 
@@ -61,7 +83,7 @@
       </div>
       <div class="ob-body">Isso significa que cada exercício, cada reflexão, cada técnica aqui tem uma razão de ser — e essa razão está publicada em centenas de estudos científicos.<br><br>Dito isso: <strong>o Farol complementa, não substitui</strong> o trabalho com um/a psicólogo/a. Se você está em sofrimento intenso, por favor busque apoio profissional.</div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(3)">Entendi</button>
   </div>
 
@@ -106,7 +128,7 @@
         </div>
       </div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(4)">Que travessia incrível!</button>
   </div>
 
@@ -135,7 +157,7 @@
         </div>
       </div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(5)">Adorei, vamos lá!</button>
   </div>
 
@@ -154,7 +176,7 @@
         </div>
       </div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" id="ob-btn3" disabled onclick="obNext(6)" style="opacity:.45">Continuar</button>
   </div>
 
@@ -170,7 +192,7 @@
       </div>
       <div class="ob-body" style="margin-top:10px">Ao participar, você não apenas cuida de si — você <strong>ajuda outras pessoas</strong> que virão depois.</div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div></div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <button class="btn" onclick="obNext(7)">Quero fazer parte disso</button>
   </div>
 
@@ -193,8 +215,71 @@
         </label>
       </div>
     </div>
-    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div></div>
-    <button class="btn" id="ob-btn5" disabled onclick="obDone()" style="opacity:.45">Acender o Farol 🏮</button>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div></div>
+    <button class="btn" id="ob-btn5" disabled onclick="obNext(8)" style="opacity:.45">Continuar →</button>
+  </div>
+
+  <!-- 8: Perfil (nome + dados demográficos) -->
+  <div class="ob-slide" id="obs8">
+    <div class="ob-top">
+      <div class="ob-icon">👋</div>
+      <div class="ob-title">Como prefere ser chamada/o?</div>
+      <div class="ob-body">Estes dados são opcionais mas ajudam a entender quem usa o Farol — e a tornar a psicologia cada vez mais acessível para todos. Tudo é anónimo.</div>
+
+      <div class="demo-form">
+
+        <!-- Nome / apelido -->
+        <div class="demo-field">
+          <label class="demo-label">Como quer ser chamada/o?</label>
+          <input type="text" class="demo-input" id="demo-name" placeholder="Ex: Ana, João, Ju…" maxlength="40" autocomplete="off">
+        </div>
+
+        <!-- Género -->
+        <div class="demo-field">
+          <label class="demo-label">Género</label>
+          <div class="demo-pill-row">
+            <button class="demo-pill" onclick="demoPick('gender','feminino',this)">Feminino</button>
+            <button class="demo-pill" onclick="demoPick('gender','masculino',this)">Masculino</button>
+            <button class="demo-pill" onclick="demoPick('gender','nao-binario',this)">Não-binário</button>
+            <button class="demo-pill" onclick="demoPick('gender','outro',this)">Outro</button>
+            <button class="demo-pill" onclick="demoPick('gender','prefiro-nao-dizer',this)">Prefiro não dizer</button>
+          </div>
+        </div>
+
+        <!-- Idade -->
+        <div class="demo-field">
+          <label class="demo-label">Idade</label>
+          <input type="number" class="demo-input demo-input-sm" id="demo-age" placeholder="Ex: 28" min="12" max="99" inputmode="numeric">
+        </div>
+
+        <!-- Cidade + País -->
+        <div class="demo-field demo-field-2col">
+          <div>
+            <label class="demo-label">Cidade</label>
+            <input type="text" class="demo-input" id="demo-city" placeholder="Ex: São Paulo" maxlength="60">
+          </div>
+          <div>
+            <label class="demo-label">País</label>
+            <input type="text" class="demo-input" id="demo-country" placeholder="Ex: Brasil" maxlength="60">
+          </div>
+        </div>
+
+        <!-- Terapia -->
+        <div class="demo-field">
+          <label class="demo-label">Faz acompanhamento psicológico?</label>
+          <div class="demo-pill-row">
+            <button class="demo-pill" onclick="demoPick('therapy','sim',this)">Sim</button>
+            <button class="demo-pill" onclick="demoPick('therapy','nao',this)">Não</button>
+            <button class="demo-pill" onclick="demoPick('therapy','pausado',this)">Fiz, estou em pausa</button>
+            <button class="demo-pill" onclick="demoPick('therapy','lista-espera',this)">Aguardando vaga</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div></div>
+    <button class="btn" onclick="obFinish()">Acender o Farol 🏮</button>
+    <button class="btn ghost" onclick="obFinish()" style="margin-top:0">Pular esta etapa</button>
   </div>
 
 </div>
@@ -378,7 +463,7 @@
 
 <!-- BOTTOM NAV -->
 <nav id="nav">
-  <div class="nav-logo"><img src="logo-pequena.png" alt="Psicoterapia e Afins"></div>
+  <div class="nav-logo"><img src="assets/farol-icon.svg" alt="Farol"></div>
   <button class="nb on" id="nb-home" onclick="goTo('home')">
     <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Início</span>
   </button>

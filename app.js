@@ -29,7 +29,7 @@ const LOGO_SVG = `<svg width="32" height="38" viewBox="0 0 52 62" fill="none" xm
 const BRAND_FOOTER_HTML = `
 <div style="margin:8px 0 0;background:#F0F6F3;border-radius:14px;padding:16px 18px;border:1px solid rgba(94,125,115,.12)">
   <div style="margin-bottom:12px">
-    <img src="logo-completa.png" alt="Psicoterapia e Afins" style="height:34px;width:auto;display:block">
+    <img src="assets/farol-logo.svg" alt="Farol" width="140" style="display:block">
   </div>
   <div style="font-size:12px;color:#5A6B65;line-height:1.65;border-top:1px solid rgba(94,125,115,.15);padding-top:10px">
     ⚕️ <strong>Recurso psicoeducativo</strong> — não substitui acompanhamento psicológico profissional.<br>
@@ -55,6 +55,8 @@ let D = {
   moduleProgress: {},   // { m1: { steps: [true,false,...], done: false } }
   entries: [],          // diary
   assessment: null,
+  nickname: '',         // como prefere ser chamada/o
+  demographics: null,   // { gender, age, city, country, therapy }
   consentGiven: false,
   consentDate: null,    // ISO timestamp do consentimento
   participantId: null,  // UUID anónimo gerado uma vez
@@ -85,8 +87,10 @@ function load(){
       if(!D.analytics.moduleEvents)D.analytics.moduleEvents=[];
       if(!D.analytics.diaryEvents) D.analytics.diaryEvents=[];
       if(!D.participantId) D.participantId = generateUUID();
-      if(D.consentDate  === undefined) D.consentDate  = null;
-      if(D.lastSync     === undefined) D.lastSync     = null;
+      if(D.consentDate    === undefined) D.consentDate    = null;
+      if(D.lastSync       === undefined) D.lastSync       = null;
+      if(D.nickname       === undefined) D.nickname       = '';
+      if(D.demographics   === undefined) D.demographics   = null;
     } else {
       D.participantId = generateUUID();
     }
@@ -651,6 +655,7 @@ function goTo(s){
    ONBOARDING
    ══════════════════════════════════ */
 let _obSel=-1;
+let _obDemo={};   // temp demographics before saving
 function obNext(n){ document.getElementById('obs'+(n-1)).classList.remove('on'); document.getElementById('obs'+n).classList.add('on'); }
 function obSelect(el,v){
   _obSel=v;
@@ -660,13 +665,43 @@ function obSelect(el,v){
   if(btn){ btn.disabled=false; btn.style.opacity='1'; }
   D.obLevel=v;
 }
-function obSkip(){ obDone(); }
+function obSkip(){
+  // skip directo ao fim, mantém campos vazios
+  obDone();
+}
 function obConsentToggle(cb){
   const btn=document.getElementById('ob-btn5');
   if(!btn) return;
   btn.disabled = !cb.checked;
   btn.style.opacity = cb.checked ? '1' : '';
   D.consentGiven = cb.checked;
+}
+/* Selecciona pill demográfico (gender / therapy) */
+function demoPick(field, value, el){
+  _obDemo[field] = value;
+  // toggle visual dentro do mesmo grupo
+  el.closest('.demo-pill-row').querySelectorAll('.demo-pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+/* Chamado pelo botão final da slide de perfil */
+function obFinish(){
+  // lê campos de texto
+  const nameVal    = (document.getElementById('demo-name')?.value||'').trim();
+  const ageVal     = parseInt(document.getElementById('demo-age')?.value||'') || null;
+  const cityVal    = (document.getElementById('demo-city')?.value||'').trim();
+  const countryVal = (document.getElementById('demo-country')?.value||'').trim();
+
+  if(nameVal) D.nickname = nameVal;
+  D.demographics = {
+    gender:  _obDemo.gender  || null,
+    age:     ageVal,
+    city:    cityVal  || null,
+    country: countryVal || null,
+    therapy: _obDemo.therapy || null,
+  };
+  obDone();
+  // auto-sync: envia dados demográficos + consentimento (sem pré-teste ainda)
+  syncToResearch({ silent: true, requirePretest: false });
 }
 function obDone(){
   D.obDone=true;
@@ -873,6 +908,8 @@ function finishPretest(){
     D.posttestRemindAfter = null;
     save();
     trackAppEvent('posttest_complete');
+    // auto-sync: envia dados completos pré+pós-teste para investigação
+    syncToResearch({ silent: true });
     showPosttestDelta();
   } else {
     D.pretest = result;
@@ -998,7 +1035,7 @@ function renderHome(){
   const now=new Date(), h=now.getHours();
   const gr = h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
   document.getElementById('h-date').textContent = DIAS[now.getDay()]+', '+now.getDate()+' de '+MESES[now.getMonth()];
-  document.getElementById('h-hi').textContent   = gr+' 👋';
+  document.getElementById('h-hi').textContent   = D.nickname ? gr+', '+D.nickname+' 👋' : gr+' 👋';
   document.getElementById('h-sub').textContent  = SUBS[now.getDate()%SUBS.length];
 
   // XP bar
@@ -1693,24 +1730,26 @@ function dl(name,content,type){ const a=document.createElement('a'); a.href=URL.
 /* ══════════════════════════════════
    SINCRONIZAÇÃO COM GOOGLE SHEETS
    ══════════════════════════════════ */
-async function syncToResearch(){
+// silent=true → sem toasts de erro nem loading no botão (para auto-sync)
+// requirePretest=true → bloqueia se pré-teste não feito ainda (desligar para sync pós-consentimento)
+async function syncToResearch({ silent=false, requirePretest=true }={}){
   if(!RESEARCH_ENDPOINT){
-    toast('⚙️ URL de pesquisa não configurado em app.js');
+    if(!silent) toast('⚙️ URL de pesquisa não configurado em app.js');
     return;
   }
-  if(!D.pretest){
-    toast('⚠️ Complete o pré-teste antes de enviar dados.');
+  if(requirePretest && !D.pretest){
+    if(!silent) toast('⚠️ Complete o pré-teste antes de enviar dados.');
     return;
   }
   const btn  = document.getElementById('sync-btn');
-  const desc = document.getElementById('sync-desc');
-  if(btn){ btn.textContent='⏳ A enviar…'; btn.style.opacity='0.6'; btn.onclick=null; }
+  if(!silent && btn){ btn.textContent='⏳ A enviar…'; btn.style.opacity='0.6'; btn.onclick=null; }
 
   try{
     const doneMods = MODULES.filter(m=>D.moduleProgress[m.id]?.done).map(m=>m.title);
     const payload = {
       participantId: D.participantId,
       consentDate:   D.consentDate,
+      demographics:  D.demographics,
       pretest:       D.pretest,
       posttest:      D.posttest || null,
       entries:       D.entries,
@@ -1732,16 +1771,17 @@ async function syncToResearch(){
       save();
       renderDadosSync();
       trackAppEvent('research_sync_ok');
-      toast('✅ Dados enviados! Obrigada pela contribuição.');
+      toast(silent ? '🔬 Dados enviados para a investigação.' : '✅ Dados enviados! Obrigada pela contribuição.');
     } else {
-      toast('❌ Erro no servidor: '+(result.error||'resposta inesperada'));
+      if(!silent) toast('❌ Erro no servidor: '+(result.error||'resposta inesperada'));
+      console.warn('[Farol] sync error:', result.error);
     }
   }catch(err){
-    toast('⚠️ Falha na ligação. Verifique a rede e tente novamente.');
-    console.error('[Farol] syncToResearch:', err);
+    if(!silent) toast('⚠️ Falha na ligação. Verifique a rede e tente novamente.');
+    console.warn('[Farol] syncToResearch:', err.message);
   }
 
-  if(btn){ btn.textContent='🔬 Enviar'; btn.style.opacity='1'; btn.onclick=syncToResearch; }
+  if(!silent && btn){ btn.textContent='🔬 Enviar'; btn.style.opacity='1'; btn.onclick=()=>syncToResearch(); }
 }
 
 function renderDadosSync(){
@@ -1794,6 +1834,17 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 /* ══════════════════════════════════
    INIT
    ══════════════════════════════════ */
+/* ── Splash screen ── */
+(function(){
+  const splash = document.getElementById('splash');
+  if(!splash) return;
+  // Mostra durante 1.8s, depois dissolve em 0.45s
+  setTimeout(function(){
+    splash.classList.add('out');
+    setTimeout(function(){ splash.classList.add('gone'); }, 460);
+  }, 1800);
+})();
+
 load();
 _classifyDone=[];
 _flipsAll=0;
