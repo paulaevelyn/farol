@@ -1,4 +1,4 @@
-/* ════════════════════════════════════════════════════════
+﻿/* ════════════════════════════════════════════════════════
    Navegando as Preocupações — app.js v4
    Gameful Learning · pt-BR · TCC · MCT · ACT · TFC/CFT
    © 2025 Psicoterapia e Afins — psicoterapiaeafins.com.br
@@ -60,7 +60,7 @@ let D = {
   reminders: { enabled:false, hour:20 }, // lembrete diário local
   consentGiven: false,
   consentDate: null,    // ISO timestamp do consentimento
-  participantId: null,  // UUID anónimo gerado uma vez
+  participantId: null,  // UUID anônimo gerado uma vez
   lastSync: null,       // ISO timestamp do último envio para pesquisa
   pretest:  null,       // { gad7: {score,level,answers}, mcq30: {scores:{wf,cw,nc,pr,nb}, answers}, date }
   posttest: null,       // same shape as pretest
@@ -873,7 +873,32 @@ function renderPretestGAD7(){
         </div>
       </div>
     </div>
+    ${pretestFooterHTML()}
   </div>`;
+}
+
+/* Rodapé do pré/pós-teste: corrigir resposta anterior + adiar */
+function pretestFooterHTML(){
+  const canBack = _pt.gad7Answers.length > 0 || _pt.mcq30Answers.length > 0;
+  return `<div class="pt-footer">
+    ${canBack?`<button class="pt-link" onclick="pretestBack()">← Corrigir anterior</button>`:'<span></span>'}
+    ${!_pt.isPost?`<button class="pt-link muted" onclick="pretestLater()">Responder depois</button>`:''}
+  </div>`;
+}
+
+function pretestBack(){
+  if(_pt.phase==='mcq30'){
+    if(_pt.mcq30Q > 0){ _pt.mcq30Answers.pop(); _pt.mcq30Q--; renderPretestMCQ30(); }
+    else { _pt.phase='gad7'; _pt.gad7Answers.pop(); _pt.gad7Q--; renderPretestGAD7(); }
+  } else if(_pt.gad7Q > 0){
+    _pt.gad7Answers.pop(); _pt.gad7Q--; renderPretestGAD7();
+  }
+}
+
+function pretestLater(){
+  trackAppEvent('pretest_postponed');
+  toast('Sem problema — a pré-avaliação fica à sua espera. 🧭');
+  goTo('home');
 }
 
 function answerGAD7(v){
@@ -907,6 +932,7 @@ function renderPretestMCQ30(){
       </div>
     </div>
     <p style="font-size:12px;color:var(--light);text-align:center;margin-top:4px">Não há respostas certas ou erradas — responda com sinceridade.</p>
+    ${pretestFooterHTML()}
   </div>`;
 }
 
@@ -959,7 +985,7 @@ function finishPretest(){
       <div style="font-size:56px;margin-bottom:20px">🏮</div>
       <h2 style="font-size:22px;font-weight:800;margin-bottom:10px">O Farol está aceso!</h2>
       <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:24px">
-        Avaliação registada. Ao longo da travessia voltaremos a medir<br>para ver o quanto você progrediu.
+        Avaliação registrada. Ao longo da travessia voltaremos a medir<br>para ver o quanto você progrediu.
       </p>
       ${gadLv==='sev' ? crisisCardHTML() : ''}
       <button class="btn" style="max-width:320px;margin:16px auto 0" onclick="goTo('home')">Começar a travessia ⛵</button>
@@ -1194,7 +1220,16 @@ let _curModId = null, _curStep = 0, _stepOk = false;
 let _breathTimer = null, _breathPhase = 0, _breathCount = 0, _breathCycles = 0;
 
 function openModule(id){
-  _curModId = id; _curStep = 0;
+  _curModId = id;
+  // retoma na primeira etapa incompleta (em vez de recomeçar do zero)
+  const mod = MODULES.find(m=>m.id===id);
+  const done = D.moduleProgress[id]?.steps || [];
+  let resume = 0;
+  if(!D.moduleProgress[id]?.done){
+    resume = mod.steps.findIndex((_,i)=>!done[i]);
+    if(resume < 0) resume = 0;
+  }
+  _curStep = resume;
   goTo('module');
   renderModuleStep();
 }
@@ -1202,7 +1237,8 @@ function openModule(id){
 function renderModuleStep(){
   const mod  = MODULES.find(m=>m.id===_curModId);
   const step = mod.steps[_curStep];
-  _stepOk    = (step.type==='info'||step.type==='flipcard'||step.type==='guided');
+  // etapa já concluída antes → continuar liberado (permite rever sem refazer)
+  _stepOk    = (step.type==='info'||step.type==='flipcard'||step.type==='guided') || !!D.moduleProgress[_curModId]?.steps?.[_curStep];
   stopBreath();
   _classifyDone = [];
   _flipsAll = 0;
@@ -1264,8 +1300,17 @@ function renderModuleStep(){
     <div style="background:var(--sand);padding:8px 0 4px">${dots.length>1?`<div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0">${dots}</div>`:''}</div>
     <div class="step-body" style="padding-bottom:8px">${body}</div>
     <div class="step-footer">
+      ${_curStep>0?`<button class="btn ghost step-prev" onclick="prevStep()">← Anterior</button>`:''}
       <button class="btn ${mod.color==='coral'?'':'mint'}" id="${btnId}" ${_stepOk?'':'disabled'} onclick="advanceStep()">${btnLabel}</button>
     </div>`;
+}
+
+function prevStep(){
+  if(_curStep===0) return;
+  stopBreath();
+  _curStep--;
+  renderModuleStep();
+  document.getElementById('scr-module').scrollTop=0;
 }
 
 function enableContinue(){
@@ -1647,7 +1692,7 @@ function gadFinish(){ const s=_gadA.reduce((a,b)=>a+b,0); D.assessment={score:s,
 function renderAssessResult(){
   const a=D.assessment;
   const info={
-    low:{title:'Preocupação mínima',icon:'🌱',msg:'Pontuação '+a.score+'/21. As preocupações estão em um nível que não interfere significativamente no dia a dia.',rec:'Continue explorando os módulos e use o diário para monitorizar os seus padrões.'},
+    low:{title:'Preocupação mínima',icon:'🌱',msg:'Pontuação '+a.score+'/21. As preocupações estão em um nível que não interfere significativamente no dia a dia.',rec:'Continue explorando os módulos e use o diário para monitorar os seus padrões.'},
     mid:{title:'Preocupação leve',icon:'🌿',msg:'Pontuação '+a.score+'/21. As preocupações têm algum impacto no cotidiano. Há ferramentas eficazes.',rec:'Os módulos 4 (Worry Time) e 6 (Reestruturação) são especialmente indicados.'},
     hi:{title:'Preocupação moderada',icon:'🌊',msg:'Pontuação '+a.score+'/21. As preocupações parecem causar impacto significativo. Este app pode ser apoio, mas considere consultar um profissional.',rec:'O app pode complementar o atendimento profissional. Módulo 5 (Regulação) e 8 (TFC) podem ajudar agora.'},
     sev:{title:'Preocupação severa',icon:'🌀',msg:'Pontuação '+a.score+'/21. Este nível sugere um sofrimento intenso — e ninguém deveria atravessá-lo sem apoio.',rec:'Recomendamos fortemente procurar um/a psicólogo/a ou o CAPS da sua cidade. O app continua aqui como complemento — Módulo 5 (Regulação) pode ajudar nos momentos agudos.'},
@@ -1853,7 +1898,7 @@ function openModal(id){
 }
 function closeModal(e){ if(!e||e.target===document.getElementById('modal-ov')) document.getElementById('modal-ov').classList.remove('on'); }
 function deleteAll(){
-  // preserva identidade anónima para não duplicar participantes na base de dados
+  // preserva identidade anônima para não duplicar participantes na base de dados
   const pid=D.participantId, cd=D.consentDate, ls=D.lastSync;
   D={
     xp:0, badges:[], obDone:true, obLevel:D.obLevel,
@@ -1891,8 +1936,17 @@ function renderNudge(){
 
   let html = '';
 
+  // 0. Pré-avaliação pendente — caminho de volta para quem adiou
+  if(!D.pretest && D.obDone){
+    html = `<div class="nudge mint">
+      <div class="nudge-icon">🧭</div>
+      <div class="nudge-body"><strong>Pré-avaliação pendente.</strong>
+      São ~5 minutos e é o ponto de partida para medir o seu progresso na travessia.</div>
+      <button class="nudge-btn" onclick="goTo('pretest')">Responder agora</button>
+    </div>`;
+  }
   // 1. Retorno após pausa — acolher sem culpa (evita o efeito "estraguei tudo")
-  if(daysSince !== null && daysSince >= 3){
+  else if(daysSince !== null && daysSince >= 3){
     html = `<div class="nudge lav">
       <div class="nudge-icon">🤗</div>
       <div class="nudge-body"><strong>Que bom ter você de volta.</strong>
@@ -1957,7 +2011,7 @@ async function toggleReminders(cb){
     }
     const perm = await Notification.requestPermission();
     if(perm !== 'granted'){
-      toast('Permissão negada — ative nas definições do navegador.');
+      toast('Permissão negada — ative nas configurações do navegador.');
       cb.checked = false; return;
     }
     D.reminders.enabled = true; save();

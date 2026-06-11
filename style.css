@@ -480,8 +480,22 @@ html,body{height:100%;font-family:var(--font);background:var(--sand);color:var(-
 .step-footer{
   padding:16px 22px calc(22px + env(safe-area-inset-bottom));
   background:var(--sand);position:sticky;bottom:0;
-  border-top:1px solid var(--border)
+  border-top:1px solid var(--border);
+  display:flex;gap:10px;align-items:center
 }
+.step-footer .btn{margin:0;flex:1;width:auto}
+.step-prev{flex:0 0 auto !important;padding:14px 18px}
+
+/* ── Rodapé do pré/pós-teste ── */
+.pt-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:18px;padding:0 4px
+}
+.pt-link{
+  background:none;border:none;cursor:pointer;font-family:var(--font);
+  font-size:13px;font-weight:700;color:var(--mint-d);padding:8px 4px
+}
+.pt-link.muted{color:var(--light);font-weight:600}
 .step-footer .btn{width:100%;margin:0}
 
 /* ── Highlight box (tip) ── */
