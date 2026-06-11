@@ -296,6 +296,7 @@
     <div class="home-hi"   id="h-hi">Olá 👋</div>
     <div class="home-sub"  id="h-sub"></div>
   </div>
+  <div id="h-nudge"></div>
   <div id="h-xp"></div>
   <div class="stats">
     <div class="stat"><div class="stat-n" style="color:var(--mint)"  id="hs-mod">0</div><div class="stat-l">módulos</div></div>
@@ -398,6 +399,34 @@
         <div class="set-desc" id="sync-desc">A carregar…</div>
       </div>
       <button id="sync-btn" class="btn" style="padding:7px 16px;font-size:13px;width:auto;flex-shrink:0" onclick="syncToResearch()">Enviar</button>
+    </div>
+  </div>
+
+  <!-- Lembretes -->
+  <div class="sdiv">Lembretes</div>
+  <div class="set-group">
+    <div class="set-row" style="cursor:default">
+      <div style="flex:1">
+        <div class="set-lbl">🔔 Lembrete diário de prática</div>
+        <div class="set-desc">Uma notificação gentil para manter o hábito</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="rem-toggle" onchange="toggleReminders(this)">
+        <span class="switch-track"></span>
+      </label>
+    </div>
+    <div class="set-row" id="rem-hour-row" style="cursor:default;display:none">
+      <div style="flex:1">
+        <div class="set-lbl">Horário</div>
+        <div class="set-desc">Escolha um momento calmo do seu dia</div>
+      </div>
+      <select id="rem-hour" class="demo-input" style="width:auto;padding:8px 12px" onchange="setReminderHour(this)">
+        <option value="8">08:00</option>
+        <option value="12">12:00</option>
+        <option value="18">18:00</option>
+        <option value="20" selected>20:00</option>
+        <option value="21">21:00</option>
+      </select>
     </div>
   </div>
 

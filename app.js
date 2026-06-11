@@ -57,6 +57,7 @@ let D = {
   assessment: null,
   nickname: '',         // como prefere ser chamada/o
   demographics: null,   // { gender, age, city, country, therapy }
+  reminders: { enabled:false, hour:20 }, // lembrete diário local
   consentGiven: false,
   consentDate: null,    // ISO timestamp do consentimento
   participantId: null,  // UUID anónimo gerado uma vez
@@ -91,12 +92,45 @@ function load(){
       if(D.lastSync       === undefined) D.lastSync       = null;
       if(D.nickname       === undefined) D.nickname       = '';
       if(D.demographics   === undefined) D.demographics   = null;
+      if(!D.reminders) D.reminders = { enabled:false, hour:20 };
     } else {
       D.participantId = generateUUID();
     }
   }catch(e){}
 }
-function save(){ localStorage.setItem(SK,JSON.stringify(D)); }
+function save(){
+  try{ localStorage.setItem(SK,JSON.stringify(D)); }
+  catch(e){
+    // quota cheia ou modo privado — avisa em vez de falhar em silêncio
+    console.warn('[Farol] save falhou:', e.message);
+    if(typeof toast==='function') toast('⚠️ Não foi possível guardar. Exporte os seus dados em Dados → Exportar.');
+  }
+}
+
+/* GAD-7 — faixas oficiais (Spitzer et al., 2006):
+   0-4 mínima · 5-9 leve · 10-14 moderada · 15-21 severa */
+function gad7Level(score){
+  return score<=4?'low':score<=9?'mid':score<=14?'hi':'sev';
+}
+const GAD7_LABELS = { low:'Mínima', mid:'Leve', hi:'Moderada', sev:'Severa' };
+
+/* Cartão de apoio em crise — mostrado quando GAD-7 ≥ 15 */
+function crisisCardHTML(){
+  return `
+  <div class="crisis-card">
+    <div class="crisis-title">💛 Você não precisa atravessar isso sozinho/a</div>
+    <div class="crisis-body">
+      A sua pontuação sugere um sofrimento significativo neste momento. Este app é um apoio,
+      mas <strong>não substitui ajuda profissional</strong> — e procurá-la é um ato de coragem, não de fraqueza.
+    </div>
+    <div class="crisis-resources">
+      <a href="tel:188" class="crisis-res"><span>📞</span><div><strong>CVV — 188</strong><small>Ligação gratuita, 24h, todos os dias</small></div></a>
+      <a href="https://www.cvv.org.br" target="_blank" class="crisis-res"><span>💬</span><div><strong>Chat do CVV</strong><small>cvv.org.br — conversa por escrito</small></div></a>
+      <div class="crisis-res"><span>🏥</span><div><strong>CAPS ou UBS</strong><small>Atendimento gratuito pelo SUS na sua cidade</small></div></div>
+      <div class="crisis-res"><span>🚨</span><div><strong>SAMU — 192</strong><small>Em emergência, ligue imediatamente</small></div></div>
+    </div>
+  </div>`;
+}
 
 /* ══════════════════════════════════
    DATE HELPERS
@@ -648,7 +682,7 @@ function goTo(s){
   if(s==='progress') renderProgress();
   if(s==='assess')   renderAssess();
   if(s==='pretest')  renderPretest();
-  if(s==='dados')    renderDadosSync();
+  if(s==='dados'){ renderDadosSync(); renderReminderUI(); }
 }
 
 /* ══════════════════════════════════
@@ -894,11 +928,11 @@ function calcMCQ30Scores(answers){
 
 function finishPretest(){
   const gad7Score = _pt.gad7Answers.reduce((a,b)=>a+b,0);
-  const gad7Level = gad7Score<=4?'low':gad7Score<=9?'mid':'hi';
+  const gadLv = gad7Level(gad7Score);
   const mcq30Scores = calcMCQ30Scores(_pt.mcq30Answers);
 
   const result = {
-    gad7: { score: gad7Score, level: gad7Level, answers: [..._pt.gad7Answers] },
+    gad7: { score: gad7Score, level: gadLv, answers: [..._pt.gad7Answers] },
     mcq30: { scores: mcq30Scores, answers: [..._pt.mcq30Answers] },
     date: today(),
   };
@@ -916,18 +950,19 @@ function finishPretest(){
     save();
     trackAppEvent('pretest_complete');
     // update assessment from GAD-7 pretest scores
-    D.assessment = { score: gad7Score, level: gad7Level, date: today(), answers: [..._pt.gad7Answers] };
+    D.assessment = { score: gad7Score, level: gadLv, date: today(), answers: [..._pt.gad7Answers] };
     save();
-    // show brief thank-you then go home
+    // show brief thank-you then go home — com rede de segurança se score severo
     const el = document.getElementById('pretest-content');
     el.innerHTML = `
-    <div class="pretest-wrap" style="text-align:center;padding-top:80px">
+    <div class="pretest-wrap" style="text-align:center;padding-top:60px">
       <div style="font-size:56px;margin-bottom:20px">🏮</div>
       <h2 style="font-size:22px;font-weight:800;margin-bottom:10px">O Farol está aceso!</h2>
-      <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:32px">
+      <p style="font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:24px">
         Avaliação registada. Ao longo da travessia voltaremos a medir<br>para ver o quanto você progrediu.
       </p>
-      <button class="btn" style="max-width:320px;margin:0 auto" onclick="goTo('home')">Começar a travessia ⛵</button>
+      ${gadLv==='sev' ? crisisCardHTML() : ''}
+      <button class="btn" style="max-width:320px;margin:16px auto 0" onclick="goTo('home')">Começar a travessia ⛵</button>
     </div>`;
   }
 }
@@ -1037,6 +1072,7 @@ function renderHome(){
   document.getElementById('h-date').textContent = DIAS[now.getDay()]+', '+now.getDate()+' de '+MESES[now.getMonth()];
   document.getElementById('h-hi').textContent   = D.nickname ? gr+', '+D.nickname+' 👋' : gr+' 👋';
   document.getElementById('h-sub').textContent  = SUBS[now.getDate()%SUBS.length];
+  renderNudge();
 
   // XP bar
   const lv = getLevel(D.xp), pct = getLevelPct(D.xp), nextLv = LEVELS[lv.n] || lv;
@@ -1513,6 +1549,8 @@ function saveDiary(){
   D.entries.unshift({id:Date.now().toString(),ts:Date.now(),date:today(),worry:w,type:_selType||'u',bodyReactions:body,strategies:strats,after});
   save(); checkBadges(); trackDiaryEvent(); checkPosttestTrigger(); toast('Registro salvo! 📔');
   renderDiaryForm(); renderDiaryHist();
+  setTimeout(maybeShowIfThen, 900);
+  scheduleLocalReminder(); // já praticou hoje → empurra lembrete para amanhã
 }
 
 function renderDiaryHist(){
@@ -1605,18 +1643,20 @@ function renderAssessQ(){
     </div>`;
 }
 function gadAnswer(v){ _gadA.push(v);_gadQ++; if(_gadQ<GAD_Q.length)renderAssessQ(); else gadFinish(); }
-function gadFinish(){ const s=_gadA.reduce((a,b)=>a+b,0),lv=s<=4?'low':s<=9?'mid':'hi'; D.assessment={score:s,level:lv,date:today(),answers:_gadA}; save(); renderAssessResult(); }
+function gadFinish(){ const s=_gadA.reduce((a,b)=>a+b,0); D.assessment={score:s,level:gad7Level(s),date:today(),answers:_gadA}; save(); renderAssessResult(); }
 function renderAssessResult(){
   const a=D.assessment;
   const info={
-    low:{title:'Preocupação leve',icon:'🌱',msg:'Pontuação '+a.score+'/21. As preocupações estão em um nível que não interfere significativamente no dia a dia.',rec:'Continue explorando os módulos e use o diário para monitorizar os seus padrões.'},
-    mid:{title:'Preocupação moderada',icon:'🌊',msg:'Pontuação '+a.score+'/21. As preocupações têm algum impacto no cotidiano. Há ferramentas eficazes.',rec:'Os módulos 4 (Worry Time) e 6 (Reestruturação) são especialmente indicados. Considere apoio profissional se persistir.'},
-    hi:{title:'Preocupação elevada',icon:'🌀',msg:'Pontuação '+a.score+'/21. As preocupações parecem causar impacto significativo. Este app pode ser apoio, mas considere consultar um profissional.',rec:'O app pode complementar o atendimento profissional. Módulo 5 (Regulação) e 8 (TFC) podem ajudar agora.'},
-  }[a.level];
+    low:{title:'Preocupação mínima',icon:'🌱',msg:'Pontuação '+a.score+'/21. As preocupações estão em um nível que não interfere significativamente no dia a dia.',rec:'Continue explorando os módulos e use o diário para monitorizar os seus padrões.'},
+    mid:{title:'Preocupação leve',icon:'🌿',msg:'Pontuação '+a.score+'/21. As preocupações têm algum impacto no cotidiano. Há ferramentas eficazes.',rec:'Os módulos 4 (Worry Time) e 6 (Reestruturação) são especialmente indicados.'},
+    hi:{title:'Preocupação moderada',icon:'🌊',msg:'Pontuação '+a.score+'/21. As preocupações parecem causar impacto significativo. Este app pode ser apoio, mas considere consultar um profissional.',rec:'O app pode complementar o atendimento profissional. Módulo 5 (Regulação) e 8 (TFC) podem ajudar agora.'},
+    sev:{title:'Preocupação severa',icon:'🌀',msg:'Pontuação '+a.score+'/21. Este nível sugere um sofrimento intenso — e ninguém deveria atravessá-lo sem apoio.',rec:'Recomendamos fortemente procurar um/a psicólogo/a ou o CAPS da sua cidade. O app continua aqui como complemento — Módulo 5 (Regulação) pode ajudar nos momentos agudos.'},
+  }[a.level] || {title:'Avaliação',icon:'📋',msg:'Pontuação '+a.score+'/21.',rec:''};
   const d=new Date(a.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
   document.getElementById('assess-wrap').innerHTML=
     `<div style="padding:0 16px 24px">
-      <div class="result-hero ${a.level}"><h2>${info.icon} ${info.title}</h2><p>${info.msg}</p></div>
+      <div class="result-hero ${a.level==='sev'?'hi':a.level}"><h2>${info.icon} ${info.title}</h2><p>${info.msg}</p></div>
+      ${a.level==='sev' ? crisisCardHTML() : ''}
       <div class="card"><div class="card-lbl">Próximo passo recomendado</div><div style="font-size:14px;color:var(--muted);line-height:1.65">${info.rec}</div></div>
       <div style="font-size:11px;color:var(--light);text-align:center;margin-bottom:16px">Avaliado em ${d} · Não é um diagnóstico clínico</div>
       <button class="btn ghost" onclick="D.assessment=null;save();renderAssess()">Refazer avaliação</button>
@@ -1678,7 +1718,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:12px;ov
   <div class="stat"><div class="stat-n">${doneMods.length}/${MODULES.length}</div><div class="stat-l">módulos concluídos</div></div>
 </div>
 ${doneMods.length?`<h2>Módulos concluídos</h2><div class="ins"><div class="ins-b">${doneMods.map(m=>`<span class="pill">${m}</span>`).join('')}</div></div>`:''}
-${D.assessment?`<h2>Avaliação GAD-7</h2><div class="ins"><div class="ins-b">Pontuação: <strong>${D.assessment.score}/21</strong> — ${{low:'Leve',mid:'Moderado',hi:'Elevado'}[D.assessment.level]} (${new Date(D.assessment.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})})</div></div>`:''}
+${D.assessment?`<h2>Avaliação GAD-7</h2><div class="ins"><div class="ins-b">Pontuação: <strong>${D.assessment.score}/21</strong> — ${GAD7_LABELS[D.assessment.level]||''} (${new Date(D.assessment.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})})</div></div>`:''}
 <h2>Todos os registros</h2>
 <table><thead><tr><th>Data</th><th>Preocupação</th><th>Tipo</th><th>Estratégia</th><th>Depois</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="ft">
@@ -1818,6 +1858,8 @@ function deleteAll(){
   D={
     xp:0, badges:[], obDone:true, obLevel:D.obLevel,
     moduleProgress:{}, entries:[], assessment:null,
+    nickname:D.nickname, demographics:D.demographics,
+    reminders:D.reminders||{enabled:false,hour:20},
     consentGiven:true, consentDate:cd,
     participantId:pid, lastSync:ls,
     pretest:null, posttest:null, posttestRemindAfter:null,
@@ -1834,6 +1876,156 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 /* ══════════════════════════════════
    INIT
    ══════════════════════════════════ */
+/* ══════════════════════════════════
+   NUDGES COMPORTAMENTAIS (home)
+   Prioridade: pós-teste pendente > retorno após pausa (autocompaixão)
+   > módulo a meio (efeito Zeigarnik) > plano se-então (Gollwitzer)
+   ══════════════════════════════════ */
+function renderNudge(){
+  const el = document.getElementById('h-nudge');
+  if(!el) return;
+  const streak = calcStreak();
+  const lastEntry = D.entries.length ? [...D.entries].sort((a,b)=>b.ts-a.ts)[0] : null;
+  const daysSince = lastEntry ? Math.floor((Date.now()-lastEntry.ts)/864e5) : null;
+  const halfMod = MODULES.find(m=>{ const mp=D.moduleProgress[m.id]; return mp && !mp.done && mp.steps?.some(Boolean); });
+
+  let html = '';
+
+  // 1. Retorno após pausa — acolher sem culpa (evita o efeito "estraguei tudo")
+  if(daysSince !== null && daysSince >= 3){
+    html = `<div class="nudge lav">
+      <div class="nudge-icon">🤗</div>
+      <div class="nudge-body"><strong>Que bom ter você de volta.</strong>
+      Pausas fazem parte de qualquer travessia — o que importa é que o farol continua aceso. Um registro pequeno hoje já recomeça o caminho.</div>
+      <button class="nudge-btn" onclick="goTo('diary')">Registrar agora</button>
+    </div>`;
+  }
+  // 2. Módulo a meio — tarefas incompletas pedem fecho (Zeigarnik)
+  else if(halfMod){
+    const pct = modProgress(halfMod);
+    html = `<div class="nudge mint">
+      <div class="nudge-icon">📖</div>
+      <div class="nudge-body"><strong>${halfMod.title}</strong> está ${pct}% completo.
+      Faltam só alguns passos para fechar este capítulo.</div>
+      <button class="nudge-btn" onclick="openModule('${halfMod.id}')">Continuar</button>
+    </div>`;
+  }
+  // 3. Streak ativo — reforço do progresso (sem pressão)
+  else if(streak >= 2){
+    html = `<div class="nudge amber">
+      <div class="nudge-icon">🔥</div>
+      <div class="nudge-body"><strong>${streak} dias seguidos de prática.</strong>
+      A constância — não a perfeição — é o que treina o cérebro.</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+/* Intenção de implementação (Gollwitzer, 1999) — "quando X, então Y"
+   duplica a probabilidade de executar o comportamento planeado */
+const IFTHEN_PLANS = [
+  'Quando eu notar a preocupação a crescer, vou <strong>respirar fundo 3 vezes</strong> antes de reagir.',
+  'Quando um pensamento "e se..." aparecer, vou <strong>anotá-lo e adiá-lo para o meu Worry Time</strong>.',
+  'Quando o corpo ficar tenso, vou <strong>soltar os ombros e desacelerar a expiração</strong>.',
+  'Quando eu me pegar ruminando, vou <strong>nomear: "isto é só um pensamento"</strong> e voltar ao presente.',
+];
+function maybeShowIfThen(){
+  // mostra a cada 3 registos para não saturar
+  if(D.entries.length % 3 !== 1) return;
+  const plan = IFTHEN_PLANS[Math.floor(Math.random()*IFTHEN_PLANS.length)];
+  document.getElementById('modal-title').textContent = '🌱 Um plano para amanhã';
+  document.getElementById('modal-body').innerHTML =
+    plan + '<br><br><span style="font-size:12px;color:var(--light)">Planos "quando-então" duplicam a chance de agir no momento certo (Gollwitzer, 1999).</span>';
+  document.getElementById('modal-actions').innerHTML =
+    '<button class="btn mint" onclick="closeModal()">Combinado 🤝</button>';
+  document.getElementById('modal-ov').classList.add('on');
+}
+
+/* ══════════════════════════════════
+   LEMBRETES (Notification API + Service Worker)
+   Limitação honesta: sem servidor push, o lembrete dispara
+   quando o browser/PWA está aberto. No Android instalado
+   como PWA, o service worker mantém-se ativo razoavelmente.
+   ══════════════════════════════════ */
+let _reminderTimer = null;
+
+async function toggleReminders(cb){
+  if(cb.checked){
+    if(!('Notification' in window)){
+      toast('Este navegador não suporta notificações.');
+      cb.checked = false; return;
+    }
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      toast('Permissão negada — ative nas definições do navegador.');
+      cb.checked = false; return;
+    }
+    D.reminders.enabled = true; save();
+    scheduleLocalReminder();
+    toast('🔔 Lembrete diário ativado!');
+    trackAppEvent('reminders_on');
+  } else {
+    D.reminders.enabled = false; save();
+    if(_reminderTimer) clearTimeout(_reminderTimer);
+    toast('Lembrete desativado.');
+    trackAppEvent('reminders_off');
+  }
+  renderReminderUI();
+}
+
+function setReminderHour(sel){
+  D.reminders.hour = parseInt(sel.value); save();
+  scheduleLocalReminder();
+  toast('Lembrete às '+sel.value+':00.');
+}
+
+function scheduleLocalReminder(){
+  if(_reminderTimer) clearTimeout(_reminderTimer);
+  if(!D.reminders.enabled || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(D.reminders.hour, 0, 0, 0);
+  if(next <= now) next.setDate(next.getDate()+1);
+  // já praticou hoje? agenda só para amanhã
+  const practicedToday = D.entries.some(e=>e.date===today());
+  if(practicedToday && next.getDate()===now.getDate()) next.setDate(next.getDate()+1);
+  _reminderTimer = setTimeout(fireReminder, next - now);
+}
+
+const REMINDER_MSGS = [
+  '🏮 O seu farol está à espera. 2 minutos de registro já contam.',
+  '🌊 Como foi o dia? Um registro rápido ajuda a mapear o padrão.',
+  '🧭 Pequena pausa para si: que preocupação merece ser anotada hoje?',
+];
+async function fireReminder(){
+  if(!D.reminders.enabled) return;
+  const msg = REMINDER_MSGS[Math.floor(Math.random()*REMINDER_MSGS.length)];
+  try{
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if(reg){
+      reg.showNotification('Farol', { body: msg, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'farol-daily' });
+    } else {
+      new Notification('Farol', { body: msg, icon: 'icon-192.png' });
+    }
+    trackAppEvent('reminder_fired');
+  }catch(e){ console.warn('[Farol] notificação falhou:', e); }
+  scheduleLocalReminder(); // agenda o próximo
+}
+
+function renderReminderUI(){
+  const cb  = document.getElementById('rem-toggle');
+  const sel = document.getElementById('rem-hour');
+  const row = document.getElementById('rem-hour-row');
+  if(cb)  cb.checked = D.reminders.enabled;
+  if(sel) sel.value  = String(D.reminders.hour);
+  if(row) row.style.display = D.reminders.enabled ? '' : 'none';
+}
+
+/* ── Service worker (offline + notificações) ── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(e=>console.warn('[Farol] SW:', e.message));
+}
+
 /* ── Splash screen ── */
 (function(){
   const splash = document.getElementById('splash');
@@ -1849,6 +2041,7 @@ load();
 _classifyDone=[];
 _flipsAll=0;
 trackAppEvent('app_open');
+scheduleLocalReminder();
 if(!D.obDone){
   document.getElementById('onboard').classList.remove('hide');
 } else {

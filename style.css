@@ -239,6 +239,58 @@ html,body{height:100%;font-family:var(--font);background:var(--sand);color:var(-
   background:var(--mint-xl);border-color:var(--mint);color:var(--mint-d);font-weight:700
 }
 
+/* ── Cartão de apoio em crise ── */
+.crisis-card{
+  background:#FFF8F0;border:1.5px solid rgba(196,125,42,.3);
+  border-radius:var(--r);padding:18px;margin:16px var(--pg);
+  text-align:left
+}
+.crisis-title{font-size:15px;font-weight:800;color:var(--amber);margin-bottom:8px}
+.crisis-body{font-size:13px;color:var(--graphite);line-height:1.65;margin-bottom:14px}
+.crisis-resources{display:flex;flex-direction:column;gap:8px}
+.crisis-res{
+  display:flex;align-items:center;gap:12px;
+  background:var(--white);border-radius:12px;padding:10px 14px;
+  text-decoration:none;color:inherit;border:1px solid var(--border)
+}
+.crisis-res span{font-size:20px;flex-shrink:0}
+.crisis-res strong{font-size:13px;display:block;color:var(--graphite)}
+.crisis-res small{font-size:11px;color:var(--muted)}
+
+/* ── Nudges comportamentais (home) ── */
+.nudge{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 var(--pg) var(--gap);padding:14px 16px;
+  border-radius:var(--r);box-shadow:var(--shadow)
+}
+.nudge.lav  {background:var(--lav-l)}
+.nudge.mint {background:var(--mint-xl)}
+.nudge.amber{background:var(--amber-l)}
+.nudge-icon{font-size:24px;flex-shrink:0}
+.nudge-body{flex:1;min-width:180px;font-size:13px;color:var(--graphite);line-height:1.55}
+.nudge-body strong{font-weight:800}
+.nudge-btn{
+  padding:8px 16px;border-radius:20px;border:none;cursor:pointer;
+  background:var(--mint-d);color:var(--white);
+  font-size:12px;font-weight:700;font-family:var(--font);flex-shrink:0
+}
+.nudge.lav .nudge-btn{background:var(--lav)}
+
+/* ── Toggle switch ── */
+.switch{position:relative;display:inline-block;flex-shrink:0;cursor:pointer}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch-track{
+  display:block;width:46px;height:26px;border-radius:13px;
+  background:rgba(63,67,75,.18);transition:background .2s;position:relative
+}
+.switch-track::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:20px;height:20px;border-radius:50%;background:var(--white);
+  box-shadow:0 1px 4px rgba(0,0,0,.2);transition:transform .2s
+}
+.switch input:checked + .switch-track{background:var(--mint)}
+.switch input:checked + .switch-track::after{transform:translateX(20px)}
+
 /* ── Page header ── */
 .hdr{
   padding:calc(env(safe-area-inset-top,0px)+52px) var(--pg) 20px;
